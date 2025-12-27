@@ -143,7 +143,8 @@ bool Manager::isGender(const std::string& gender, const std::string& checkFor) {
     
     // Convert to lowercase for comparison
     std::string lowerGender = gender;
-    std::transform(lowerGender.begin(), lowerGender.end(), lowerGender.begin(), ::tolower);
+    std::transform(lowerGender.begin(), lowerGender.end(), lowerGender.begin(), 
+                   [](unsigned char c) { return std::tolower(c); });
     
     if (checkFor == "male") {
         return lowerGender == "男" || lowerGender == "male" || lowerGender == "m";

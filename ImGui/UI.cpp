@@ -582,7 +582,8 @@ void UI::drawExportPopup() {
 			std::string filename = export_filename_buffer;
 			// Ensure .csv extension (case-insensitive check)
 			std::string lowerFilename = filename;
-			std::transform(lowerFilename.begin(), lowerFilename.end(), lowerFilename.begin(), ::tolower);
+			std::transform(lowerFilename.begin(), lowerFilename.end(), lowerFilename.begin(), 
+			               [](unsigned char c) { return std::tolower(c); });
 			if (lowerFilename.find(".csv") == std::string::npos) {
 				filename += ".csv";
 			}
