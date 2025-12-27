@@ -182,8 +182,8 @@ void Manager::exportToCSV(const std::string& filename) {
         throw std::runtime_error("无法创建CSV文件");
     }
     
-    // Write CSV header with BOM for better Excel compatibility
-    ofs << "\xEF\xBB\xBF"; // UTF-8 BOM
+    // Write UTF-8 BOM (Byte Order Mark) for better Excel compatibility
+    ofs << "\xEF\xBB\xBF"; // UTF-8 BOM: EF BB BF
     ofs << "编号,姓名,性别,电话,邮箱,地址\n";
     
     // Write data rows with proper CSV escaping

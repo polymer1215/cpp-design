@@ -580,11 +580,14 @@ void UI::drawExportPopup() {
 	if (ImGui::Button(u8"导出", ImVec2(120, 0))) {
 		try {
 			std::string filename = export_filename_buffer;
-			// Ensure .csv extension (case-insensitive check)
+			// Ensure .csv extension at the end (case-insensitive check)
 			std::string lowerFilename = filename;
 			std::transform(lowerFilename.begin(), lowerFilename.end(), lowerFilename.begin(), 
 			               [](unsigned char c) { return std::tolower(c); });
-			if (lowerFilename.find(".csv") == std::string::npos) {
+			// Check if filename ends with .csv (case-insensitive)
+			bool hasCSVExtension = lowerFilename.length() >= 4 && 
+			                       lowerFilename.substr(lowerFilename.length() - 4) == ".csv";
+			if (!hasCSVExtension) {
 				filename += ".csv";
 			}
 			
