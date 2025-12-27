@@ -1,6 +1,8 @@
 ﻿#include <SFML/Window.hpp>
 #include <imgui.h>
 #include <iostream>
+#include <algorithm>
+#include <cctype>
 
 #include "UI.h"
 #include "ManagerSingleton.h"
@@ -557,7 +559,8 @@ void UI::drawSortPopup() {
 		ManagerSingleton::get_instance().sortContacts(field, sortAscending);
 		
 		std::string sortType = sortAscending ? u8"升序" : u8"降序";
-		showSuccessNotification(u8"已按" + std::string(sortOptions[sortFieldIndex]) + sortType + u8"排序");
+		std::string message = std::string(u8"已按") + std::string(sortOptions[sortFieldIndex]) + sortType + std::string(u8"排序");
+		showSuccessNotification(message);
 		ImGui::CloseCurrentPopup();
 		performAutoSave();
 	}
@@ -577,13 +580,16 @@ void UI::drawExportPopup() {
 	if (ImGui::Button(u8"导出", ImVec2(120, 0))) {
 		try {
 			std::string filename = export_filename_buffer;
-			// Ensure .csv extension
-			if (filename.find(".csv") == std::string::npos) {
+			// Ensure .csv extension (case-insensitive check)
+			std::string lowerFilename = filename;
+			std::transform(lowerFilename.begin(), lowerFilename.end(), lowerFilename.begin(), ::tolower);
+			if (lowerFilename.find(".csv") == std::string::npos) {
 				filename += ".csv";
 			}
 			
 			ManagerSingleton::get_instance().exportToCSV(filename);
-			showSuccessNotification(u8"成功导出到 " + filename);
+			std::string message = std::string(u8"成功导出到 ") + filename;
+			showSuccessNotification(message);
 			ImGui::CloseCurrentPopup();
 		}
 		catch (const std::exception& e) {

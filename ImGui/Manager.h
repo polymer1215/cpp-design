@@ -29,4 +29,6 @@ public:
 
 private:
 	bool isSubStr(const std::string& sub, const std::string& main);
+	std::string escapeCSVField(const std::string& field);
+	bool isGender(const std::string& gender, const std::string& checkFor);
 };

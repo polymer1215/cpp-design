@@ -114,6 +114,45 @@ bool Manager::isSubStr(const std::string& sub, const std::string& main) {
     return main.find(sub) != std::string::npos;
 }
 
+// Helper function to escape CSV fields
+std::string Manager::escapeCSVField(const std::string& field) {
+    // If field contains comma, quote, or newline, wrap in quotes and escape quotes
+    bool needsQuoting = field.find(',') != std::string::npos || 
+                       field.find('"') != std::string::npos || 
+                       field.find('\n') != std::string::npos;
+    
+    if (!needsQuoting) {
+        return field;
+    }
+    
+    std::string escaped = "\"";
+    for (char c : field) {
+        if (c == '"') {
+            escaped += "\"\""; // Escape quotes by doubling them
+        } else {
+            escaped += c;
+        }
+    }
+    escaped += "\"";
+    return escaped;
+}
+
+// Helper function to check gender (case-insensitive)
+bool Manager::isGender(const std::string& gender, const std::string& checkFor) {
+    if (gender.empty()) return false;
+    
+    // Convert to lowercase for comparison
+    std::string lowerGender = gender;
+    std::transform(lowerGender.begin(), lowerGender.end(), lowerGender.begin(), ::tolower);
+    
+    if (checkFor == "male") {
+        return lowerGender == "男" || lowerGender == "male" || lowerGender == "m";
+    } else if (checkFor == "female") {
+        return lowerGender == "女" || lowerGender == "female" || lowerGender == "f";
+    }
+    return false;
+}
+
 void Manager::sortContacts(SortField field, bool ascending) {
     std::sort(personList.begin(), personList.end(), [field, ascending](const Person& a, const Person& b) {
         bool result = false;
@@ -142,30 +181,31 @@ void Manager::exportToCSV(const std::string& filename) {
         throw std::runtime_error("无法创建CSV文件");
     }
     
-    // Write CSV header
+    // Write CSV header with BOM for better Excel compatibility
+    ofs << "\xEF\xBB\xBF"; // UTF-8 BOM
     ofs << "编号,姓名,性别,电话,邮箱,地址\n";
     
-    // Write data rows
+    // Write data rows with proper CSV escaping
     for (const Person& person : personList) {
-        ofs << person.id << ","
-            << person.name << ","
-            << person.gender << ","
-            << person.phoneNumber << ","
-            << person.email << ","
-            << person.communicationAddress << "\n";
+        ofs << escapeCSVField(person.id) << ","
+            << escapeCSVField(person.name) << ","
+            << escapeCSVField(person.gender) << ","
+            << escapeCSVField(person.phoneNumber) << ","
+            << escapeCSVField(person.email) << ","
+            << escapeCSVField(person.communicationAddress) << "\n";
     }
     
     ofs.close();
 }
 
 int Manager::getMaleCount() const {
-    return std::count_if(personList.begin(), personList.end(), [](const Person& p) {
-        return p.gender == "男" || p.gender == "male" || p.gender == "Male" || p.gender == "M" || p.gender == "m";
+    return std::count_if(personList.begin(), personList.end(), [this](const Person& p) {
+        return isGender(p.gender, "male");
     });
 }
 
 int Manager::getFemaleCount() const {
-    return std::count_if(personList.begin(), personList.end(), [](const Person& p) {
-        return p.gender == "女" || p.gender == "female" || p.gender == "Female" || p.gender == "F" || p.gender == "f";
+    return std::count_if(personList.begin(), personList.end(), [this](const Person& p) {
+        return isGender(p.gender, "female");
     });
 }
