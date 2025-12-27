@@ -4,6 +4,12 @@
 #include <vector>
 #include "Person.h"
 
+enum class SortField {
+	ID,
+	NAME,
+	PHONE
+};
+
 class Manager {
 public:
 	std::vector<Person> personList;
@@ -15,6 +21,11 @@ public:
 	bool updatePerson(Person& updatedPerson);
 	bool idExist(Person& thePerson);
 	std::vector<Person> getFiltered(const std::string& key);
+	void sortContacts(SortField field, bool ascending = true);
+	void clearAllContacts();
+	void exportToCSV(const std::string& filename);
+	int getMaleCount() const;
+	int getFemaleCount() const;
 
 private:
 	bool isSubStr(const std::string& sub, const std::string& main);

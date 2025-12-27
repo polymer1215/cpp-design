@@ -2,6 +2,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <algorithm>
 #include "Manager.h"
 
 using json = nlohmann::json;
@@ -111,4 +112,60 @@ std::vector<Person> Manager::getFiltered(const std::string& key) {
 
 bool Manager::isSubStr(const std::string& sub, const std::string& main) {
     return main.find(sub) != std::string::npos;
+}
+
+void Manager::sortContacts(SortField field, bool ascending) {
+    std::sort(personList.begin(), personList.end(), [field, ascending](const Person& a, const Person& b) {
+        bool result = false;
+        switch (field) {
+            case SortField::ID:
+                result = a.id < b.id;
+                break;
+            case SortField::NAME:
+                result = a.name < b.name;
+                break;
+            case SortField::PHONE:
+                result = a.phoneNumber < b.phoneNumber;
+                break;
+        }
+        return ascending ? result : !result;
+    });
+}
+
+void Manager::clearAllContacts() {
+    personList.clear();
+}
+
+void Manager::exportToCSV(const std::string& filename) {
+    std::ofstream ofs(filename);
+    if (!ofs.is_open()) {
+        throw std::runtime_error("无法创建CSV文件");
+    }
+    
+    // Write CSV header
+    ofs << "编号,姓名,性别,电话,邮箱,地址\n";
+    
+    // Write data rows
+    for (const Person& person : personList) {
+        ofs << person.id << ","
+            << person.name << ","
+            << person.gender << ","
+            << person.phoneNumber << ","
+            << person.email << ","
+            << person.communicationAddress << "\n";
+    }
+    
+    ofs.close();
+}
+
+int Manager::getMaleCount() const {
+    return std::count_if(personList.begin(), personList.end(), [](const Person& p) {
+        return p.gender == "男" || p.gender == "male" || p.gender == "Male" || p.gender == "M" || p.gender == "m";
+    });
+}
+
+int Manager::getFemaleCount() const {
+    return std::count_if(personList.begin(), personList.end(), [](const Person& p) {
+        return p.gender == "女" || p.gender == "female" || p.gender == "Female" || p.gender == "F" || p.gender == "f";
+    });
 }
