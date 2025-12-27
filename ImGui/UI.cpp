@@ -518,14 +518,14 @@ bool UI::validatePhoneNumber(const std::string& phone) {
 	if (phone.empty()) return false; // Required field
 	// Check if phone contains only digits and optionally dashes/spaces
 	for (char c : phone) {
-		if (!isdigit(c) && c != '-' && c != ' ' && c != '+' && c != '(' && c != ')') {
+		if (!std::isdigit(static_cast<unsigned char>(c)) && c != '-' && c != ' ' && c != '+' && c != '(' && c != ')') {
 			return false;
 		}
 	}
 	// Check minimum length (at least 7 digits for a valid phone)
 	int digitCount = 0;
 	for (char c : phone) {
-		if (isdigit(c)) digitCount++;
+		if (std::isdigit(static_cast<unsigned char>(c))) digitCount++;
 	}
 	return digitCount >= 7;
 }
