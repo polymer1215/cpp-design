@@ -1,0 +1,9 @@
+{
+  "name": "contact-manager",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "sfml",
+    "imgui-sfml",
+    "nlohmann-json"
+  ]
+}

@@ -1,0 +1,48 @@
+# ===== Visual Studio / MSBuild =====
+.vs/
+*.VC.db
+*.VC.VC.opendb
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+*.tlog
+*.idb
+*.pdb
+*.ilk
+*.ipch
+*.iobj
+*.pch
+
+# MSBuild / intermediate
+*.obj
+*.exe
+*.dll
+*.lib
+*.exp
+*.map
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+out/
+build/
+CMakeSettings.json.user
+
+# NuGet packages
+packages/
+*.nupkg
+
+# ===== Windows / common =====
+Thumbs.db
+Desktop.ini
