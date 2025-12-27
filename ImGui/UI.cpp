@@ -1,6 +1,8 @@
 ﻿#include <SFML/Window.hpp>
 #include <imgui.h>
 #include <iostream>
+#include <algorithm>
+#include <cctype>
 
 #include "UI.h"
 #include "ManagerSingleton.h"
@@ -60,6 +62,22 @@ void UI::getPopup() {
 		ImGui::OpenPopup(u8"搜索");
 		searchWindowDraw = false;
 	}
+	else if (sortWindowDraw) {
+		ImGui::OpenPopup(u8"排序");
+		sortWindowDraw = false;
+	}
+	else if (exportWindowDraw) {
+		ImGui::OpenPopup(u8"导出");
+		exportWindowDraw = false;
+	}
+	else if (statsWindowDraw) {
+		ImGui::OpenPopup(u8"统计信息");
+		statsWindowDraw = false;
+	}
+	else if (clearAllWindowDraw) {
+		ImGui::OpenPopup(u8"清空所有联系人");
+		clearAllWindowDraw = false;
+	}
 
 }
 void UI::drawPopup() {
@@ -85,6 +103,26 @@ void UI::drawPopup() {
 		drawSearchPopup();
 		ImGui::EndPopup();
 	}
+
+	else if (ImGui::BeginPopupModal(u8"排序", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+		drawSortPopup();
+		ImGui::EndPopup();
+	}
+
+	else if (ImGui::BeginPopupModal(u8"导出", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+		drawExportPopup();
+		ImGui::EndPopup();
+	}
+
+	else if (ImGui::BeginPopupModal(u8"统计信息", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+		drawStatsPopup();
+		ImGui::EndPopup();
+	}
+
+	else if (ImGui::BeginPopupModal(u8"清空所有联系人", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+		drawClearAllPopup();
+		ImGui::EndPopup();
+	}
 }
 
 void UI::drawAddPopup() {
@@ -103,6 +141,16 @@ void UI::drawAddPopup() {
 			emptyFieldsError = true;
 			cantAdd = false;
 		}
+		else if (!validatePhoneNumber(new_phone_buffer)) {
+			showSuccessNotification(u8"电话号码格式不正确");
+			emptyFieldsError = false;
+			cantAdd = false;
+		}
+		else if (!validateEmail(new_email_buffer)) {
+			showSuccessNotification(u8"邮箱格式不正确");
+			emptyFieldsError = false;
+			cantAdd = false;
+		}
 		else {
 			Person newPerson;
 			newPerson.id = new_id_buffer;
@@ -117,6 +165,7 @@ void UI::drawAddPopup() {
 				cantAdd = false;
 				emptyFieldsError = false;
 				showSuccessNotification(u8"联系人添加成功");
+				performAutoSave();
 			}
 			else {
 				cantAdd = true;
@@ -158,6 +207,16 @@ void UI::drawEditPopup() {
 			emptyFieldsError = true;
 			idNotExist = false;
 		}
+		else if (!validatePhoneNumber(new_phone_buffer)) {
+			showSuccessNotification(u8"电话号码格式不正确");
+			emptyFieldsError = false;
+			idNotExist = false;
+		}
+		else if (!validateEmail(new_email_buffer)) {
+			showSuccessNotification(u8"邮箱格式不正确");
+			emptyFieldsError = false;
+			idNotExist = false;
+		}
 		else {
 			Person newPerson;
 			newPerson.id = new_id_buffer;
@@ -173,6 +232,7 @@ void UI::drawEditPopup() {
 				idNotExist = false;
 				emptyFieldsError = false;
 				showSuccessNotification(u8"联系人修改成功");
+				performAutoSave();
 			}
 			else {
 				idNotExist = true;
@@ -217,6 +277,7 @@ void UI::drawDeletePopup() {
 				ImGui::CloseCurrentPopup();
 				idNotExist = false;
 				showSuccessNotification(u8"联系人删除成功");
+				performAutoSave();
 			}
 			else {
 				idNotExist = true;
@@ -333,6 +394,18 @@ void UI::drawMenuBar() {
 				showSuccessNotification(u8"数据保存成功");
 				std::cout << "Saved successfully" << std::endl;
 			}
+			ImGui::Separator();
+			if (ImGui::MenuItem(u8"导出到CSV")) {
+				exportWindowDraw = true;
+			}
+			ImGui::Separator();
+			if (ImGui::MenuItem(u8"自动保存", nullptr, &autoSaveEnabled)) {
+				if (autoSaveEnabled) {
+					showSuccessNotification(u8"已启用自动保存");
+				} else {
+					showSuccessNotification(u8"已禁用自动保存");
+				}
+			}
 			ImGui::EndMenu();
 		}
 
@@ -345,6 +418,10 @@ void UI::drawMenuBar() {
 			}
 			if (ImGui::MenuItem(u8"删除")) {
 				deleteWindowDraw = true;
+			}
+			ImGui::Separator();
+			if (ImGui::MenuItem(u8"清空所有联系人")) {
+				clearAllWindowDraw = true;
 			}
 			ImGui::EndMenu();
 		}
@@ -361,12 +438,31 @@ void UI::drawMenuBar() {
 			ImGui::EndMenu();
 		}
 		
+		if (ImGui::BeginMenu(u8"工具")) {
+			if (ImGui::MenuItem(u8"排序")) {
+				sortWindowDraw = true;
+			}
+			if (ImGui::MenuItem(u8"统计信息")) {
+				statsWindowDraw = true;
+			}
+			ImGui::EndMenu();
+		}
+		
 		// Show success message in menu bar
 		if (showSuccessMessage && messageTimer > 0) {
 			ImGui::SameLine();
 			ImGui::Spacing();
 			ImGui::SameLine();
 			ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), successMessage.c_str());
+		}
+		
+		// Show auto-save indicator
+		if (autoSaveEnabled) {
+			ImGui::SameLine();
+			float menuBarWidth = ImGui::GetWindowWidth();
+			float textWidth = ImGui::CalcTextSize(u8"[自动保存]").x;
+			ImGui::SetCursorPosX(menuBarWidth - textWidth - 20);
+			ImGui::TextColored(ImVec4(0.0f, 0.8f, 0.0f, 1.0f), u8"[自动保存]");
 		}
 
 		ImGui::EndMainMenuBar();
@@ -405,5 +501,157 @@ void UI::updateMessageTimer() {
 		if (messageTimer == 0) {
 			showSuccessMessage = false;
 		}
+	}
+}
+
+// Validation helper functions
+bool UI::validateEmail(const std::string& email) {
+	if (email.empty()) return true; // Optional field
+	// Simple email validation: contains @ and at least one dot after @
+	size_t atPos = email.find('@');
+	if (atPos == std::string::npos) return false;
+	size_t dotPos = email.find('.', atPos);
+	return dotPos != std::string::npos && dotPos > atPos + 1 && dotPos < email.length() - 1;
+}
+
+bool UI::validatePhoneNumber(const std::string& phone) {
+	if (phone.empty()) return false; // Required field
+	// Check if phone contains only digits and optionally dashes/spaces
+	for (char c : phone) {
+		if (!std::isdigit(static_cast<unsigned char>(c)) && c != '-' && c != ' ' && c != '+' && c != '(' && c != ')') {
+			return false;
+		}
+	}
+	// Check minimum length (at least 7 digits for a valid phone)
+	int digitCount = 0;
+	for (char c : phone) {
+		if (std::isdigit(static_cast<unsigned char>(c))) digitCount++;
+	}
+	return digitCount >= 7;
+}
+
+// Auto-save helper
+void UI::performAutoSave() {
+	if (autoSaveEnabled) {
+		ManagerSingleton::get_instance().saveData();
+	}
+}
+
+// New popup implementations
+void UI::drawSortPopup() {
+	const char* sortOptions[] = { u8"编号", u8"姓名", u8"电话" };
+	ImGui::Text(u8"选择排序字段：");
+	ImGui::Combo(u8"排序字段", &sortFieldIndex, sortOptions, IM_ARRAYSIZE(sortOptions));
+	
+	ImGui::Checkbox(u8"升序排列", &sortAscending);
+	
+	ImGui::Separator();
+	
+	if (ImGui::Button(u8"确定", ImVec2(120, 0))) {
+		SortField field;
+		switch (sortFieldIndex) {
+			case 0: field = SortField::ID; break;
+			case 1: field = SortField::NAME; break;
+			case 2: field = SortField::PHONE; break;
+			default: field = SortField::ID;
+		}
+		
+		ManagerSingleton::get_instance().sortContacts(field, sortAscending);
+		
+		std::string sortType = sortAscending ? u8"升序" : u8"降序";
+		std::string message = std::string(u8"已按") + std::string(sortOptions[sortFieldIndex]) + sortType + std::string(u8"排序");
+		showSuccessNotification(message);
+		ImGui::CloseCurrentPopup();
+		performAutoSave();
+	}
+	
+	ImGui::SameLine();
+	
+	if (ImGui::Button(u8"取消", ImVec2(120, 0))) {
+		ImGui::CloseCurrentPopup();
+	}
+}
+
+void UI::drawExportPopup() {
+	ImGui::InputText(u8"文件名", export_filename_buffer, MAX_STR_LEN);
+	ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), u8"导出为CSV格式");
+	ImGui::Separator();
+	
+	if (ImGui::Button(u8"导出", ImVec2(120, 0))) {
+		try {
+			std::string filename = export_filename_buffer;
+			// Ensure .csv extension at the end (case-insensitive check)
+			std::string lowerFilename = filename;
+			std::transform(lowerFilename.begin(), lowerFilename.end(), lowerFilename.begin(), 
+			               [](unsigned char c) { return std::tolower(c); });
+			// Check if filename ends with .csv (case-insensitive)
+			bool hasCSVExtension = lowerFilename.length() >= 4 && 
+			                       lowerFilename.substr(lowerFilename.length() - 4) == ".csv";
+			if (!hasCSVExtension) {
+				filename += ".csv";
+			}
+			
+			ManagerSingleton::get_instance().exportToCSV(filename);
+			std::string message = std::string(u8"成功导出到 ") + filename;
+			showSuccessNotification(message);
+			ImGui::CloseCurrentPopup();
+		}
+		catch (const std::exception& e) {
+			showSuccessNotification(u8"导出失败");
+		}
+	}
+	
+	ImGui::SameLine();
+	
+	if (ImGui::Button(u8"取消", ImVec2(120, 0))) {
+		ImGui::CloseCurrentPopup();
+	}
+}
+
+void UI::drawStatsPopup() {
+	auto& manager = ManagerSingleton::get_instance();
+	int total = manager.personList.size();
+	int maleCount = manager.getMaleCount();
+	int femaleCount = manager.getFemaleCount();
+	int unspecified = total - maleCount - femaleCount;
+	
+	ImGui::Text(u8"联系人统计信息");
+	ImGui::Separator();
+	ImGui::Spacing();
+	
+	ImGui::Text(u8"总联系人数: %d", total);
+	ImGui::Spacing();
+	ImGui::Text(u8"男性: %d (%.1f%%)", maleCount, total > 0 ? (maleCount * 100.0f / total) : 0.0f);
+	ImGui::Text(u8"女性: %d (%.1f%%)", femaleCount, total > 0 ? (femaleCount * 100.0f / total) : 0.0f);
+	if (unspecified > 0) {
+		ImGui::Text(u8"未指定性别: %d (%.1f%%)", unspecified, total > 0 ? (unspecified * 100.0f / total) : 0.0f);
+	}
+	
+	ImGui::Separator();
+	
+	if (ImGui::Button(u8"关闭", ImVec2(240, 0))) {
+		ImGui::CloseCurrentPopup();
+	}
+}
+
+void UI::drawClearAllPopup() {
+	ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), u8"警告：此操作将删除所有联系人！");
+	ImGui::Text(u8"此操作不可恢复，确定要继续吗？");
+	ImGui::Separator();
+	
+	if (ImGui::Button(u8"确定删除", ImVec2(120, 0))) {
+		ManagerSingleton::get_instance().clearAllContacts();
+		// Clear filter if active
+		isFiltered = false;
+		filteredPersonList.reset();
+		showSuccessNotification(u8"已清空所有联系人");
+		ImGui::CloseCurrentPopup();
+		performAutoSave();
+	}
+	
+	ImGui::SameLine();
+	
+	if (ImGui::Button(u8"取消", ImVec2(120, 0))) {
+		ImGui::CloseCurrentPopup();
 	}
 }

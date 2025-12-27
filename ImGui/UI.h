@@ -17,6 +17,10 @@ private:
 	bool editWindowDraw = false;
 	bool deleteWindowDraw = false;
 	bool searchWindowDraw = false;
+	bool sortWindowDraw = false;
+	bool exportWindowDraw = false;
+	bool statsWindowDraw = false;
+	bool clearAllWindowDraw = false;
 
 	bool cantAdd = false;
 	bool idNotExist = false;
@@ -34,6 +38,11 @@ private:
 	char new_email_buffer[MAX_STR_LEN] = "";
 	char new_address_buffer[MAX_STR_LEN] = "";
 	char new_search_buffer[MAX_STR_LEN] = "";
+	char export_filename_buffer[MAX_STR_LEN] = "contacts_export.csv";
+
+	bool autoSaveEnabled = false;
+	int sortFieldIndex = 0;
+	bool sortAscending = true;
 
 
 private:
@@ -45,11 +54,18 @@ private:
 	void drawEditPopup();
 	void drawDeletePopup();
 	void drawSearchPopup();
+	void drawSortPopup();
+	void drawExportPopup();
+	void drawStatsPopup();
+	void drawClearAllPopup();
 	void displayTable(std::vector<Person>& personList);
 	void clearInputBuffers();
 	bool validateInputFields();
+	bool validateEmail(const std::string& email);
+	bool validatePhoneNumber(const std::string& phone);
 	void showSuccessNotification(const std::string& message);
 	void updateMessageTimer();
+	void performAutoSave();
 
 public:
 	void drawUI();
