@@ -70,9 +70,17 @@ void UI::getPopup() {
 		ImGui::OpenPopup(u8"导出");
 		exportWindowDraw = false;
 	}
+	else if (importWindowDraw) {
+		ImGui::OpenPopup(u8"导入");
+		importWindowDraw = false;
+	}
 	else if (statsWindowDraw) {
 		ImGui::OpenPopup(u8"统计信息");
 		statsWindowDraw = false;
+	}
+	else if (duplicatesWindowDraw) {
+		ImGui::OpenPopup(u8"重复联系人检测");
+		duplicatesWindowDraw = false;
 	}
 	else if (clearAllWindowDraw) {
 		ImGui::OpenPopup(u8"清空所有联系人");
@@ -114,8 +122,18 @@ void UI::drawPopup() {
 		ImGui::EndPopup();
 	}
 
+	else if (ImGui::BeginPopupModal(u8"导入", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+		drawImportPopup();
+		ImGui::EndPopup();
+	}
+
 	else if (ImGui::BeginPopupModal(u8"统计信息", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
 		drawStatsPopup();
+		ImGui::EndPopup();
+	}
+
+	else if (ImGui::BeginPopupModal(u8"重复联系人检测", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+		drawDuplicatesPopup();
 		ImGui::EndPopup();
 	}
 
@@ -385,18 +403,35 @@ void UI::drawMenuBar() {
 	if (ImGui::BeginMainMenuBar()) {
 		if (ImGui::BeginMenu(u8"文件")) {
 			if (ImGui::MenuItem(u8"加载")) {
-				ManagerSingleton::get_instance().loadData();
-				showSuccessNotification(u8"数据加载成功");
-				std::cout << "Loaded successfully" << std::endl;
+				if (ManagerSingleton::get_instance().loadData()) {
+					showSuccessNotification(u8"数据加载成功");
+					std::cout << "Loaded successfully" << std::endl;
+				} else {
+					showSuccessNotification(u8"数据加载失败");
+				}
 			}
 			if (ImGui::MenuItem(u8"保存")) {
-				ManagerSingleton::get_instance().saveData();
-				showSuccessNotification(u8"数据保存成功");
-				std::cout << "Saved successfully" << std::endl;
+				if (ManagerSingleton::get_instance().saveData()) {
+					showSuccessNotification(u8"数据保存成功");
+					std::cout << "Saved successfully" << std::endl;
+				} else {
+					showSuccessNotification(u8"数据保存失败");
+				}
 			}
 			ImGui::Separator();
 			if (ImGui::MenuItem(u8"导出到CSV")) {
 				exportWindowDraw = true;
+			}
+			if (ImGui::MenuItem(u8"从CSV导入")) {
+				importWindowDraw = true;
+			}
+			ImGui::Separator();
+			if (ImGui::MenuItem(u8"创建备份")) {
+				if (ManagerSingleton::get_instance().createBackup()) {
+					showSuccessNotification(u8"备份创建成功");
+				} else {
+					showSuccessNotification(u8"备份创建失败");
+				}
 			}
 			ImGui::Separator();
 			if (ImGui::MenuItem(u8"自动保存", nullptr, &autoSaveEnabled)) {
@@ -444,6 +479,9 @@ void UI::drawMenuBar() {
 			}
 			if (ImGui::MenuItem(u8"统计信息")) {
 				statsWindowDraw = true;
+			}
+			if (ImGui::MenuItem(u8"检测重复")) {
+				duplicatesWindowDraw = true;
 			}
 			ImGui::EndMenu();
 		}
@@ -575,6 +613,11 @@ void UI::drawSortPopup() {
 void UI::drawExportPopup() {
 	ImGui::InputText(u8"文件名", export_filename_buffer, MAX_STR_LEN);
 	ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), u8"导出为CSV格式");
+	
+	if (isFiltered) {
+		ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), u8"注意：将导出搜索结果 (%zu 条记录)", filteredPersonList->size());
+	}
+	
 	ImGui::Separator();
 	
 	if (ImGui::Button(u8"导出", ImVec2(120, 0))) {
@@ -591,7 +634,12 @@ void UI::drawExportPopup() {
 				filename += ".csv";
 			}
 			
-			ManagerSingleton::get_instance().exportToCSV(filename);
+			// Export filtered list if active, otherwise export all
+			if (isFiltered) {
+				ManagerSingleton::get_instance().exportToCSV(filename, *filteredPersonList);
+			} else {
+				ManagerSingleton::get_instance().exportToCSV(filename);
+			}
 			std::string message = std::string(u8"成功导出到 ") + filename;
 			showSuccessNotification(message);
 			ImGui::CloseCurrentPopup();
@@ -654,4 +702,85 @@ void UI::drawClearAllPopup() {
 	if (ImGui::Button(u8"取消", ImVec2(120, 0))) {
 		ImGui::CloseCurrentPopup();
 	}
+}
+
+void UI::drawImportPopup() {
+	ImGui::InputText(u8"文件名", import_filename_buffer, MAX_STR_LEN);
+	ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), u8"从CSV文件导入联系人");
+	ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), u8"注意：重复的ID将被跳过");
+	ImGui::Separator();
+	
+	if (ImGui::Button(u8"导入", ImVec2(120, 0))) {
+		try {
+			std::string filename = import_filename_buffer;
+			// Ensure .csv extension at the end (case-insensitive check)
+			std::string lowerFilename = filename;
+			std::transform(lowerFilename.begin(), lowerFilename.end(), lowerFilename.begin(), 
+			               [](unsigned char c) { return std::tolower(c); });
+			// Check if filename ends with .csv (case-insensitive)
+			bool hasCSVExtension = lowerFilename.length() >= 4 && 
+			                       lowerFilename.substr(lowerFilename.length() - 4) == ".csv";
+			if (!hasCSVExtension) {
+				filename += ".csv";
+			}
+			
+			if (ManagerSingleton::get_instance().importFromCSV(filename)) {
+				std::string message = std::string(u8"成功从 ") + filename + std::string(u8" 导入联系人");
+				showSuccessNotification(message);
+				ImGui::CloseCurrentPopup();
+				performAutoSave();
+			} else {
+				showSuccessNotification(u8"导入失败：没有导入任何联系人");
+			}
+		}
+		catch (const std::exception& e) {
+			showSuccessNotification(u8"导入失败：无法打开文件");
+		}
+	}
+	
+	ImGui::SameLine();
+	
+	if (ImGui::Button(u8"取消", ImVec2(120, 0))) {
+		ImGui::CloseCurrentPopup();
+	}
+}
+
+void UI::drawDuplicatesPopup() {
+auto duplicates = ManagerSingleton::get_instance().findDuplicates();
+
+ImGui::Text(u8"重复联系人检测结果");
+ImGui::Separator();
+ImGui::Spacing();
+
+if (duplicates.empty()) {
+ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), u8"未发现重复联系人");
+} else {
+ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), u8"发现 %zu 组可能重复的联系人:", duplicates.size());
+ImGui::Spacing();
+
+// Display duplicates in a scrollable region
+ImGui::BeginChild("DuplicatesList", ImVec2(600, 300), true);
+for (size_t i = 0; i < duplicates.size(); i++) {
+const Person& p1 = duplicates[i].first;
+const Person& p2 = duplicates[i].second;
+
+ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), u8"重复组 %zu:", i + 1);
+ImGui::Indent();
+ImGui::Text(u8"1. ID: %s, 姓名: %s, 电话: %s", 
+           p1.id.c_str(), p1.name.c_str(), p1.phoneNumber.c_str());
+ImGui::Text(u8"2. ID: %s, 姓名: %s, 电话: %s", 
+           p2.id.c_str(), p2.name.c_str(), p2.phoneNumber.c_str());
+ImGui::Unindent();
+ImGui::Spacing();
+}
+ImGui::EndChild();
+ImGui::Spacing();
+ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), u8"提示：请手动删除不需要的重复项");
+}
+
+ImGui::Separator();
+
+if (ImGui::Button(u8"关闭", ImVec2(240, 0))) {
+ImGui::CloseCurrentPopup();
+}
 }

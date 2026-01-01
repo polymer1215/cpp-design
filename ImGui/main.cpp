@@ -23,8 +23,11 @@ int main() {
     ImGui::SFML::UpdateFontTexture();
 
     // 自动加载已保存的数据
-    ManagerSingleton::get_instance().loadData();
-    std::cout << "Auto-loaded " << ManagerSingleton::get_instance().personList.size() << " contacts." << std::endl;
+    if (ManagerSingleton::get_instance().loadData()) {
+        std::cout << "Auto-loaded " << ManagerSingleton::get_instance().personList.size() << " contacts." << std::endl;
+    } else {
+        std::cout << "No saved data found or error loading data." << std::endl;
+    }
 
     UI ui;
     sf::Clock deltaClock;

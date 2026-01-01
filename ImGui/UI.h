@@ -19,7 +19,9 @@ private:
 	bool searchWindowDraw = false;
 	bool sortWindowDraw = false;
 	bool exportWindowDraw = false;
+	bool importWindowDraw = false;
 	bool statsWindowDraw = false;
+	bool duplicatesWindowDraw = false;
 	bool clearAllWindowDraw = false;
 
 	bool cantAdd = false;
@@ -39,6 +41,7 @@ private:
 	char new_address_buffer[MAX_STR_LEN] = "";
 	char new_search_buffer[MAX_STR_LEN] = "";
 	char export_filename_buffer[MAX_STR_LEN] = "contacts_export.csv";
+	char import_filename_buffer[MAX_STR_LEN] = "contacts_import.csv";
 
 	bool autoSaveEnabled = false;
 	int sortFieldIndex = 0;
@@ -56,7 +59,9 @@ private:
 	void drawSearchPopup();
 	void drawSortPopup();
 	void drawExportPopup();
+	void drawImportPopup();
 	void drawStatsPopup();
+	void drawDuplicatesPopup();
 	void drawClearAllPopup();
 	void displayTable(std::vector<Person>& personList);
 	void clearInputBuffers();
