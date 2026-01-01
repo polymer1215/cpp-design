@@ -70,6 +70,10 @@ void UI::getPopup() {
 		ImGui::OpenPopup(u8"导出");
 		exportWindowDraw = false;
 	}
+	else if (importWindowDraw) {
+		ImGui::OpenPopup(u8"导入");
+		importWindowDraw = false;
+	}
 	else if (statsWindowDraw) {
 		ImGui::OpenPopup(u8"统计信息");
 		statsWindowDraw = false;
@@ -111,6 +115,11 @@ void UI::drawPopup() {
 
 	else if (ImGui::BeginPopupModal(u8"导出", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
 		drawExportPopup();
+		ImGui::EndPopup();
+	}
+
+	else if (ImGui::BeginPopupModal(u8"导入", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+		drawImportPopup();
 		ImGui::EndPopup();
 	}
 
@@ -385,18 +394,35 @@ void UI::drawMenuBar() {
 	if (ImGui::BeginMainMenuBar()) {
 		if (ImGui::BeginMenu(u8"文件")) {
 			if (ImGui::MenuItem(u8"加载")) {
-				ManagerSingleton::get_instance().loadData();
-				showSuccessNotification(u8"数据加载成功");
-				std::cout << "Loaded successfully" << std::endl;
+				if (ManagerSingleton::get_instance().loadData()) {
+					showSuccessNotification(u8"数据加载成功");
+					std::cout << "Loaded successfully" << std::endl;
+				} else {
+					showSuccessNotification(u8"数据加载失败");
+				}
 			}
 			if (ImGui::MenuItem(u8"保存")) {
-				ManagerSingleton::get_instance().saveData();
-				showSuccessNotification(u8"数据保存成功");
-				std::cout << "Saved successfully" << std::endl;
+				if (ManagerSingleton::get_instance().saveData()) {
+					showSuccessNotification(u8"数据保存成功");
+					std::cout << "Saved successfully" << std::endl;
+				} else {
+					showSuccessNotification(u8"数据保存失败");
+				}
 			}
 			ImGui::Separator();
 			if (ImGui::MenuItem(u8"导出到CSV")) {
 				exportWindowDraw = true;
+			}
+			if (ImGui::MenuItem(u8"从CSV导入")) {
+				importWindowDraw = true;
+			}
+			ImGui::Separator();
+			if (ImGui::MenuItem(u8"创建备份")) {
+				if (ManagerSingleton::get_instance().createBackup()) {
+					showSuccessNotification(u8"备份创建成功");
+				} else {
+					showSuccessNotification(u8"备份创建失败");
+				}
 			}
 			ImGui::Separator();
 			if (ImGui::MenuItem(u8"自动保存", nullptr, &autoSaveEnabled)) {
@@ -647,6 +673,47 @@ void UI::drawClearAllPopup() {
 		showSuccessNotification(u8"已清空所有联系人");
 		ImGui::CloseCurrentPopup();
 		performAutoSave();
+	}
+	
+	ImGui::SameLine();
+	
+	if (ImGui::Button(u8"取消", ImVec2(120, 0))) {
+		ImGui::CloseCurrentPopup();
+	}
+}
+
+void UI::drawImportPopup() {
+	ImGui::InputText(u8"文件名", import_filename_buffer, MAX_STR_LEN);
+	ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), u8"从CSV文件导入联系人");
+	ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), u8"注意：重复的ID将被跳过");
+	ImGui::Separator();
+	
+	if (ImGui::Button(u8"导入", ImVec2(120, 0))) {
+		try {
+			std::string filename = import_filename_buffer;
+			// Ensure .csv extension at the end (case-insensitive check)
+			std::string lowerFilename = filename;
+			std::transform(lowerFilename.begin(), lowerFilename.end(), lowerFilename.begin(), 
+			               [](unsigned char c) { return std::tolower(c); });
+			// Check if filename ends with .csv (case-insensitive)
+			bool hasCSVExtension = lowerFilename.length() >= 4 && 
+			                       lowerFilename.substr(lowerFilename.length() - 4) == ".csv";
+			if (!hasCSVExtension) {
+				filename += ".csv";
+			}
+			
+			if (ManagerSingleton::get_instance().importFromCSV(filename)) {
+				std::string message = std::string(u8"成功从 ") + filename + std::string(u8" 导入联系人");
+				showSuccessNotification(message);
+				ImGui::CloseCurrentPopup();
+				performAutoSave();
+			} else {
+				showSuccessNotification(u8"导入失败：没有导入任何联系人");
+			}
+		}
+		catch (const std::exception& e) {
+			showSuccessNotification(u8"导入失败：无法打开文件");
+		}
 	}
 	
 	ImGui::SameLine();
