@@ -189,6 +189,10 @@ void Manager::clearAllContacts() {
 }
 
 void Manager::exportToCSV(const std::string& filename) {
+    exportToCSV(filename, personList);
+}
+
+void Manager::exportToCSV(const std::string& filename, const std::vector<Person>& contacts) {
     std::ofstream ofs(filename);
     if (!ofs.is_open()) {
         throw std::runtime_error("无法创建CSV文件");
@@ -199,7 +203,7 @@ void Manager::exportToCSV(const std::string& filename) {
     ofs << "编号,姓名,性别,电话,邮箱,地址\n";
     
     // Write data rows with proper CSV escaping
-    for (const Person& person : personList) {
+    for (const Person& person : contacts) {
         ofs << escapeCSVField(person.id) << ","
             << escapeCSVField(person.name) << ","
             << escapeCSVField(person.gender) << ","
@@ -343,4 +347,28 @@ bool Manager::restoreFromBackup() {
         std::cerr << "Error restoring backup: " << e.what() << std::endl;
         return false;
     }
+}
+
+std::vector<std::pair<Person, Person>> Manager::findDuplicates() const {
+    std::vector<std::pair<Person, Person>> duplicates;
+    
+    // Check for duplicates by phone number or email
+    for (size_t i = 0; i < personList.size(); i++) {
+        for (size_t j = i + 1; j < personList.size(); j++) {
+            const Person& p1 = personList[i];
+            const Person& p2 = personList[j];
+            
+            // Check if phone or email match (and are not empty)
+            bool phoneMatch = !p1.phoneNumber.empty() && p1.phoneNumber == p2.phoneNumber;
+            bool emailMatch = !p1.email.empty() && !p2.email.empty() && p1.email == p2.email;
+            bool nameMatch = p1.name == p2.name;
+            
+            // Consider it a potential duplicate if phone matches, or if name and email match
+            if (phoneMatch || (nameMatch && emailMatch)) {
+                duplicates.push_back(std::make_pair(p1, p2));
+            }
+        }
+    }
+    
+    return duplicates;
 }

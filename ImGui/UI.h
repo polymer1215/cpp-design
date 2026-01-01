@@ -21,6 +21,7 @@ private:
 	bool exportWindowDraw = false;
 	bool importWindowDraw = false;
 	bool statsWindowDraw = false;
+	bool duplicatesWindowDraw = false;
 	bool clearAllWindowDraw = false;
 
 	bool cantAdd = false;
@@ -60,6 +61,7 @@ private:
 	void drawExportPopup();
 	void drawImportPopup();
 	void drawStatsPopup();
+	void drawDuplicatesPopup();
 	void drawClearAllPopup();
 	void displayTable(std::vector<Person>& personList);
 	void clearInputBuffers();

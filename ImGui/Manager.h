@@ -24,11 +24,13 @@ public:
 	void sortContacts(SortField field, bool ascending = true);
 	void clearAllContacts();
 	void exportToCSV(const std::string& filename);
+	void exportToCSV(const std::string& filename, const std::vector<Person>& contacts);
 	int getMaleCount() const;
 	int getFemaleCount() const;
 	bool importFromCSV(const std::string& filename);
 	bool createBackup();
 	bool restoreFromBackup();
+	std::vector<std::pair<Person, Person>> findDuplicates() const;
 
 private:
 	bool isSubStr(const std::string& sub, const std::string& main);
